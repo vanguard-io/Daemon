@@ -15,10 +15,10 @@ void Log(const char *message, const int error)
         char filePath[1000];
 
         if(!error) {
-            printf("%s\n", "not an error");
-            strcpy(filePath, "/var/log/daemon_log");
+                printf("%s\n", "not an error");
+                strcpy(filePath, "/var/log/daemon_log");
         } else {
-            strcpy(filePath, "/var/log/daemon_error");
+                strcpy(filePath, "/var/log/daemon_error");
         }
 
         file = fopen(filePath, "ab+");
@@ -142,8 +142,7 @@ int main()
         ts.tv_sec = milSec / 1000;
         ts.tv_nsec = (milSec % 1000) * 1000000;
 
-        for(;;)
-        {
+        for(;;) {
                 file = fopen("/proc/stat","r");
                 fscanf(file,"%*s %Lf %Lf %Lf %Lf",&a[0],&a[1],&a[2],&a[3]);
                 fclose(file);
