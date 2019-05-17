@@ -68,11 +68,11 @@ void request(const char *body)
         // allocate space for the message
         message=malloc(message_size);
 
-        sprintf(message,"POST / HTTP/1.0\r\n");
-        strcat(message,"Content-Type: application/json");
-        strcat(message,"\r\n");
+        sprintf(message, "POST / HTTP/1.0\r\n");
+        strcat(message, "Content-Type: application/json");
+        strcat(message, "\r\n");
         sprintf(message+strlen(message), "Content-Length: %ld\r\n", strlen(body));
-        strcat(message,"\r\n");
+        strcat(message, "\r\n");
 
         strcat(message,body);
 
@@ -155,18 +155,23 @@ int main()
         long double a[4], b[4], loadavg;
         FILE *file;
 
+        time_t t;
+        struct tm * timeInfo;
+        char timeString [20];
+        char dateString [20];
+
         struct timespec ts;
         ts.tv_sec = milSec / 1000;
         ts.tv_nsec = (milSec % 1000) * 1000000;
 
         for(;;) {
-                file = fopen("/proc/stat","r");
-                fscanf(file,"%*s %Lf %Lf %Lf %Lf",&a[0],&a[1],&a[2],&a[3]);
+                file = fopen("/proc/stat", "r");
+                fscanf(file, "%*s %Lf %Lf %Lf %Lf",&a[0],&a[1],&a[2],&a[3]);
                 fclose(file);
                 nanosleep(&ts, NULL);
 
-                file = fopen("/proc/stat","r");
-                fscanf(file,"%*s %Lf %Lf %Lf %Lf",&b[0],&b[1],&b[2],&b[3]);
+                file = fopen("/proc/stat", "r");
+                fscanf(file, "%*s %Lf %Lf %Lf %Lf",&b[0],&b[1],&b[2],&b[3]);
                 fclose(file);
 
                 loadavg = ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3])) * 100;
@@ -177,9 +182,20 @@ int main()
                 if(count == 9) {
                         sprintf(loadAvgString, "%.2f", (total / 10));
 
-                        strcpy(body,"{\"cpuUsage\":");
-                        strcat(body,loadAvgString);
-                        strcat(body,"}");
+                        strcpy(body, "{\"value\": ");
+                        strcat(body, loadAvgString);
+                        strcat(body, ", ");
+                        strcat(body, "\"date\": \"");
+
+                        time(&t);
+                        timeInfo = localtime(&t);
+                        strftime (dateString, sizeof(dateString), "%F", timeInfo);
+                        strftime (timeString, sizeof(timeString), "%T", timeInfo);
+                        strcat(dateString, "T");
+                        strcat(dateString, timeString);
+                        strcat(body, dateString);
+
+                        strcat(body, "\"}");
 
                         request(body);
 
