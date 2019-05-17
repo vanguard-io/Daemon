@@ -34,7 +34,10 @@ void Log(const char *message, const int error)
 
         fclose(file);
 
-        if(error) exit(1);
+        if(error) {
+                printf("%s\n", "We broke");
+                exit(1);
+        }
 
 }
 
@@ -44,7 +47,8 @@ void request(const char *body)
 
         // first where are we going to send it?
         int port = 80;
-        char *host = "localhost";
+        char host[1000] = "localhost";
+        char error_message[1000] = "";
 
         struct hostent *server;
         struct sockaddr_in serv_addr;
@@ -78,11 +82,19 @@ void request(const char *body)
 
         // create the socket
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sockfd < 0) Log("ERROR opening socket", 1);
+        if (sockfd < 0) {
+                strcpy(error_message, "ERROR opening socket to: ");
+                strcat(error_message, host);
+                Log(error_message, 1);
+        }
 
         // lookup the ip address
         server = gethostbyname(host);
-        if (server == NULL) Log("ERROR, no such host", 1);
+        if (server == NULL) {
+                strcpy(error_message, "ERROR, no such host: ");
+                strcat(error_message, host);
+                Log(error_message, 1);
+        }
 
         // fill in the structure
         memset(&serv_addr,0,sizeof(serv_addr));
@@ -91,8 +103,11 @@ void request(const char *body)
         memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
 
         // connect the socket
-        if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
-                Log("ERROR connecting", 1);
+        if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
+                strcpy(error_message, "Error connecting to: ");
+                strcat(error_message, host);
+                Log(error_message, 1);
+        }
 
         // send the request
         total = strlen(message);
@@ -133,6 +148,8 @@ void request(const char *body)
 
 int main()
 {
+        int count = 0;
+        double total = 0;
         char body[256];
         char loadAvgString[256];
         long double a[4], b[4], loadavg;
@@ -153,12 +170,21 @@ int main()
                 fclose(file);
 
                 loadavg = ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3])) * 100;
-                sprintf(loadAvgString, "%.2Lf", loadavg);
 
-                strcpy(body,"{\"cpuUsage\":");
-                strcat(body,loadAvgString);
-                strcat(body,"}");
+                total += loadavg;
+                count++;
 
-                request(body);
+                if(count == 9) {
+                        sprintf(loadAvgString, "%.2f", (total / 10));
+
+                        strcpy(body,"{\"cpuUsage\":");
+                        strcat(body,loadAvgString);
+                        strcat(body,"}");
+
+                        request(body);
+
+                        count = 0;
+                        total = 0;
+                }
         }
 }
