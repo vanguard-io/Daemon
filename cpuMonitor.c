@@ -6,6 +6,11 @@
 #include <sys/socket.h> // socket, connect
 #include <netinet/in.h> // struct sockaddr_in, struct sockaddr
 #include <netdb.h> // struct hostent, gethostbyname
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <syslog.h>
 
 #define milSec 500
 
@@ -24,7 +29,7 @@ void Log(const char *message, const int error)
         file = fopen(filePath, "ab+");
 
         if (file == NULL) {
-                /* Unable to open file hence exit */
+                // Unable to open file hence exit
                 printf("\nUnable to open '%s' file.\n", filePath);
                 printf("Please check whether file exists and you have write privilege.\n");
                 exit(EXIT_FAILURE);
@@ -74,11 +79,7 @@ void request(const char *body)
         sprintf(message+strlen(message), "Content-Length: %ld\r\n", strlen(body));
         strcat(message, "\r\n");
 
-        strcat(message,body);
-
-
-        // What are we going to send?
-        printf("Request:\n%s\n",message);
+        strcat(message, body);
 
         // create the socket
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -97,13 +98,13 @@ void request(const char *body)
         }
 
         // fill in the structure
-        memset(&serv_addr,0,sizeof(serv_addr));
+        memset(&serv_addr, 0, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(port);
-        memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+        memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
         // connect the socket
-        if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
+        if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
                 strcpy(error_message, "Error connecting to: ");
                 strcat(error_message, host);
                 Log(error_message, 1);
@@ -113,7 +114,7 @@ void request(const char *body)
         total = strlen(message);
         sent = 0;
         do {
-                bytes = write(sockfd,message+sent,total-sent);
+                bytes = write(sockfd, message+sent, total-sent);
                 if (bytes < 0)
                         Log("ERROR writing message to socket", 1);
                 if (bytes == 0)
@@ -122,11 +123,11 @@ void request(const char *body)
         } while (sent < total);
 
         // receive the response
-        memset(response,0,sizeof(response));
+        memset(response, 0, sizeof(response));
         total = sizeof(response)-1;
         received = 0;
         do {
-                bytes = read(sockfd,response+received,total-received);
+                bytes = read(sockfd, response+received, total-received);
                 if (bytes < 0)
                         Log("ERROR reading response from socket", 1);
                 if (bytes == 0)
@@ -140,13 +141,10 @@ void request(const char *body)
         // close the socket
         close(sockfd);
 
-        // process response
-        printf("Response:\n%s\n",response);
-
         free(message);
 }
 
-int main()
+void process()
 {
         int count = 0;
         double total = 0;
@@ -166,12 +164,12 @@ int main()
 
         for(;;) {
                 file = fopen("/proc/stat", "r");
-                fscanf(file, "%*s %Lf %Lf %Lf %Lf",&a[0],&a[1],&a[2],&a[3]);
+                fscanf(file, "%*s %Lf %Lf %Lf %Lf", &a[0], &a[1], &a[2], &a[3]);
                 fclose(file);
                 nanosleep(&ts, NULL);
 
                 file = fopen("/proc/stat", "r");
-                fscanf(file, "%*s %Lf %Lf %Lf %Lf",&b[0],&b[1],&b[2],&b[3]);
+                fscanf(file, "%*s %Lf %Lf %Lf %Lf", &b[0], &b[1], &b[2], &b[3]);
                 fclose(file);
 
                 loadavg = ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3])) * 100;
@@ -203,4 +201,51 @@ int main()
                         total = 0;
                 }
         }
+}
+
+int main()
+{
+        // Our process ID and Session ID
+        pid_t pid, sid;
+
+        // Fork off the parent process
+        pid = fork();
+        if (pid < 0) {
+                exit(EXIT_FAILURE);
+        }
+        // If we got a good PID, then
+        // we can exit the parent process.
+        if (pid > 0) {
+            exit(EXIT_SUCCESS);
+        }
+
+        // Change the file mode mask
+        umask(0);
+
+
+        // Create a new SID for the child process
+        sid = setsid();
+        if (sid < 0) {
+                // Log the failure
+                exit(EXIT_FAILURE);
+        }
+
+        // Change the current working directory
+        if ((chdir("/")) < 0) {
+                // Log the failure
+                exit(EXIT_FAILURE);
+        }
+
+        // Close out the standard file descriptors
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+
+        // Daemon-specific initialization goes here
+
+        // The Big Loop
+        // In this case we are just going to call a function and do the loop there.
+        process();
+
+        exit(EXIT_SUCCESS);
 }
