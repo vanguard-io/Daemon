@@ -1,50 +1,9 @@
-#include <stdio.h> // printf, sprintf
-#include <stdlib.h> // exit, atoi, malloc, free
-#include <time.h> // nanosleep
-#include <unistd.h> // read, write, close
-#include <string.h> // memcpy, memset, strcpy
-#include <sys/socket.h> // socket, connect
-#include <netinet/in.h> // struct sockaddr_in, struct sockaddr
-#include <netdb.h> // struct hostent, gethostbyname
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <syslog.h>
+#include "headers/Headers.h"
 
 #define milSec 500
 
-void Log(const char *message, const int error)
-{
-        FILE *file;
-        char filePath[1000];
-
-        if(!error) {
-                printf("%s\n", "not an error");
-                strcpy(filePath, "/var/log/daemon_log");
-        } else {
-                strcpy(filePath, "/var/log/daemon_error");
-        }
-
-        file = fopen(filePath, "ab+");
-
-        if (file == NULL) {
-                // Unable to open file hence exit
-                printf("\nUnable to open '%s' file.\n", filePath);
-                printf("Please check whether file exists and you have write privilege.\n");
-                exit(EXIT_FAILURE);
-        }
-
-        fputs(message, file);
-
-        fclose(file);
-
-        if(error) {
-                printf("%s\n", "We broke");
-                exit(1);
-        }
-
-}
+#define FALSE 0
+#define TRUE 1
 
 void request(const char *body)
 {
@@ -62,7 +21,7 @@ void request(const char *body)
 
         // How big is the message?
         message_size=0;
-        message_size+=strlen("POST / HTTP/1.0\r\n");
+        message_size+=strlen("POST / HTTPS/1.0\r\n");
         message_size+=strlen("Content-Type: application/json");
         message_size+=strlen("\r\n");
         message_size+=strlen("Content-Length: \r\n")+strlen(body);
@@ -86,7 +45,7 @@ void request(const char *body)
         if (sockfd < 0) {
                 strcpy(error_message, "ERROR opening socket to: ");
                 strcat(error_message, host);
-                Log(error_message, 1);
+                Log(error_message, TRUE);
         }
 
         // lookup the ip address
@@ -94,7 +53,7 @@ void request(const char *body)
         if (server == NULL) {
                 strcpy(error_message, "ERROR, no such host: ");
                 strcat(error_message, host);
-                Log(error_message, 1);
+                Log(error_message, TRUE);
         }
 
         // fill in the structure
@@ -107,7 +66,7 @@ void request(const char *body)
         if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
                 strcpy(error_message, "Error connecting to: ");
                 strcat(error_message, host);
-                Log(error_message, 1);
+                Log(error_message, TRUE);
         }
 
         // send the request
@@ -203,48 +162,54 @@ void process()
         }
 }
 
-int main()
+int main(int argc, char** argv)
 {
-        // Our process ID and Session ID
-        pid_t pid, sid;
+        int debug = FALSE;
 
-        // Fork off the parent process
-        pid = fork();
-        if (pid < 0) {
-                exit(EXIT_FAILURE);
-        }
-        // If we got a good PID, then
-        // we can exit the parent process.
-        if (pid > 0) {
-            exit(EXIT_SUCCESS);
+        for(int i = 0; i < argc; i++) {
+                if(strcmp(argv[i], "debug")) {
+                        debug = TRUE;
+                }
         }
 
-        // Change the file mode mask
-        umask(0);
+        if(!debug) {
+                // Our process ID and Session ID
+                pid_t pid, sid;
+
+                // Fork off the parent process
+                pid = fork();
+                if (pid < 0) {
+                        exit(EXIT_FAILURE);
+                }
+                // If we got a good PID, then
+                // we can exit the parent process.
+                if (pid > 0) {
+                        exit(EXIT_SUCCESS);
+                }
+
+                // Change the file mode mask
+                umask(0);
 
 
-        // Create a new SID for the child process
-        sid = setsid();
-        if (sid < 0) {
-                // Log the failure
-                exit(EXIT_FAILURE);
+                // Create a new SID for the child process
+                sid = setsid();
+                if (sid < 0) {
+                        // Log the failure
+                        exit(EXIT_FAILURE);
+                }
+
+                // Change the current working directory
+                if ((chdir("/")) < 0) {
+                        // Log the failure
+                        exit(EXIT_FAILURE);
+                }
+
+                // Close out the standard file descriptors
+                close(STDIN_FILENO);
+                close(STDOUT_FILENO);
+                close(STDERR_FILENO);
         }
 
-        // Change the current working directory
-        if ((chdir("/")) < 0) {
-                // Log the failure
-                exit(EXIT_FAILURE);
-        }
-
-        // Close out the standard file descriptors
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
-
-        // Daemon-specific initialization goes here
-
-        // The Big Loop
-        // In this case we are just going to call a function and do the loop there.
         process();
 
         exit(EXIT_SUCCESS);
