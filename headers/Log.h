@@ -1,10 +1,13 @@
-void Log(const char *message, const int error)
+void Log(char *msg, const int error)
 {
         FILE *file;
         char filePath[1000];
+        char message[2000];
+
+        char *dateString = nowString();
+        sprintf(message, "%s %s", dateString, msg);
 
         if(!error) {
-                printf("%s\n", "not an error");
                 strcpy(filePath, "/var/log/daemon_log");
         } else {
                 strcpy(filePath, "/var/log/daemon_error");
@@ -19,13 +22,19 @@ void Log(const char *message, const int error)
                 exit(EXIT_FAILURE);
         }
 
+        strcat(message, "\n");
         fputs(message, file);
 
-        fclose(file);
-
         if(error) {
-                printf("%s\n", "We broke");
-                exit(1);
-        }
+                sprintf(message, "%s %s", dateString, "Sleeping for 1 minute.\n");
+                fputs(message, file);
+                fclose(file);
+                wait(60000);
 
+                free(dateString);
+        }else{
+                fclose(file);
+                free(dateString);
+        }
+        return;
 }

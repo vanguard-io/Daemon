@@ -7,5 +7,6 @@
 #include <netinet/in.h> // struct sockaddr_in, struct sockaddr
 #include <netdb.h> // struct hostent, gethostbyname
 #include <sys/stat.h> // umask
+#include "Time.h" // nowString
 #include "Log.h" // log
 #include "Request.h" // request
