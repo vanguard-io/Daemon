@@ -5,6 +5,7 @@
 #define TRUE 1
 
 char host[200] = "";
+char logPath[200] = "";
 
 void process()
 {
@@ -21,7 +22,7 @@ void process()
     line = malloc(200 * sizeof(char));
     command = malloc(200 * sizeof(char));
 
-    strcpy(command, "wc -l /var/log/apache2/other_vhosts_access.log");
+    sprintf(command, "wc -l %s", logPath);
 
     for (;;)
     {
@@ -66,6 +67,11 @@ int main(int argc, char **argv)
         {
             i++;
             strcpy(host, argv[i]);
+        }
+        else if (strcmp(argv[i], "--logPath") == 0 || strcmp(argv[i], "-logPath") == 0 || strcmp(argv[i], "-l") == 0)
+        {
+            i++;
+            strcpy(logPath, argv[i]);
         }
         else
         {
