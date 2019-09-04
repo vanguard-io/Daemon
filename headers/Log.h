@@ -1,3 +1,5 @@
+int errorCount = 0;
+
 void Log(char *msg, const int error)
 {
         FILE *file;
@@ -29,6 +31,7 @@ void Log(char *msg, const int error)
                 sprintf(message, "%s %s", dateString, "Sleeping for 1 minute.\n");
                 fputs(message, file);
                 fclose(file);
+                printf("%s\n", "we failed something");
                 wait(60000);
 
                 free(dateString);
@@ -36,5 +39,19 @@ void Log(char *msg, const int error)
                 fclose(file);
                 free(dateString);
         }
+
         return;
+}
+
+void Usage(char *argv){
+        if(argv) {
+                printf("Unknown argument: %s\n\n", argv);
+        }
+        printf("Usage: main [OPTIONS]\n\n");
+        printf("Option\t\tGNU Long Option\t\tMeaning\n");
+        printf("-d\t\t-debug --debug\t\tHow to describe what this does\n");
+        printf("-c\t\t-config --config\t\tLocation of configuration file (absolute)\n");
+
+        printf("\n");
+        exit(0);
 }
